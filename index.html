@@ -104,11 +104,10 @@ UK Child Trust Fund (CTF)</h3><p>The Child Trust Fund (CTF) was introduced in th
   const status = document.querySelector('.save-status');
   let editing = false;
   let timer;
-  const saved = localStorage.getItem(key);
-  if (saved) article.innerHTML = saved;
   const save = () => {
     localStorage.setItem(key, article.innerHTML);
-    status.innerHTML = '<span aria-hidden="true">●</span> Saved locally';
+    status.textContent = 'Saving…';
+    window.dispatchEvent(new CustomEvent('policybriefsave', {detail:{html:article.innerHTML}}));
   };
   edit.addEventListener('click', () => {
     editing = !editing;
@@ -160,4 +159,89 @@ UK Child Trust Fund (CTF)</h3><p>The Child Trust Fund (CTF) was introduced in th
     }; reader.readAsDataURL(file); graphInput.value = '';
   });
 })();
+</script><script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+import { doc, getFirestore, onSnapshot, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDYbsnR_GiXIp9fplKx8YU4xc3AC3n6YCM",
+  authDomain: "mtc-front-desk-training.firebaseapp.com",
+  projectId: "mtc-front-desk-training",
+  storageBucket: "mtc-front-desk-training.firebasestorage.app",
+  messagingSenderId: "214938121163",
+  appId: "1:214938121163:web:118bd3b73a979a1681fc4e",
+};
+const ownerUid = "CYztDF9n3UW7hmWFAOhL4En5Dr03";
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const briefRef = doc(db, "policyBriefs", "trump-accounts-2026-08-19");
+const article = document.querySelector('.policy-brief');
+const status = document.querySelector('.save-status');
+const editButton = [...document.querySelectorAll('button')].find((button) => button.textContent.includes('Edit page'));
+const actions = document.querySelector('.header-actions');
+const accountButton = document.createElement('button');
+accountButton.className = 'secondary-button account-button';
+accountButton.textContent = 'Owner sign in';
+actions.insertBefore(accountButton, editButton);
+editButton.hidden = true;
+
+let currentUser = null;
+let applyingRemote = false;
+
+onSnapshot(briefRef, (snapshot) => {
+  if (!snapshot.exists() || !snapshot.data().html) {
+    status.innerHTML = '<span aria-hidden="true">●</span> Published version';
+    return;
+  }
+  if (!applyingRemote) article.innerHTML = snapshot.data().html;
+  status.innerHTML = '<span aria-hidden="true">●</span> Published';
+}, () => {
+  status.textContent = 'Unable to load published edits';
+});
+
+onAuthStateChanged(auth, (user) => {
+  currentUser = user;
+  const isOwner = user?.uid === ownerUid;
+  editButton.hidden = !isOwner;
+  accountButton.textContent = isOwner ? 'Sign out' : 'Owner sign in';
+  if (user && !isOwner) {
+    signOut(auth);
+    alert('This account does not have permission to edit the policy brief.');
+  }
+});
+
+accountButton.addEventListener('click', async () => {
+  if (currentUser) {
+    await signOut(auth);
+    return;
+  }
+  const email = prompt('Owner email');
+  if (!email) return;
+  const password = prompt('Owner password');
+  if (!password) return;
+  try {
+    await signInWithEmailAndPassword(auth, email.trim(), password);
+  } catch {
+    alert('Sign-in failed. Please check the email and password.');
+  }
+});
+
+window.addEventListener('policybriefsave', async (event) => {
+  if (currentUser?.uid !== ownerUid) {
+    status.textContent = 'Sign in as owner to publish changes';
+    return;
+  }
+  try {
+    applyingRemote = true;
+    await setDoc(briefRef, {html:event.detail.html, updatedAt:serverTimestamp(), updatedBy:currentUser.email}, {merge:true});
+    status.innerHTML = '<span aria-hidden="true">●</span> Published';
+  } catch (error) {
+    status.textContent = 'Publish failed — local backup saved';
+    console.error(error);
+  } finally {
+    applyingRemote = false;
+  }
+});
 </script></body></html>
