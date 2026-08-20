@@ -181,6 +181,7 @@ const article = document.querySelector('.policy-brief');
 const status = document.querySelector('.save-status');
 const editButton = [...document.querySelectorAll('button')].find((button) => button.textContent.includes('Edit page'));
 const actions = document.querySelector('.header-actions');
+document.querySelector('.nav-note').textContent = 'Sign in as the owner to edit. Published changes are saved online and shown to every visitor.';
 const accountButton = document.createElement('button');
 accountButton.className = 'secondary-button account-button';
 accountButton.textContent = 'Owner sign in';
