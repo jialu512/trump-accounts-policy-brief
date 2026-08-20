@@ -266,14 +266,15 @@ let currentUser = null;
 let applyingRemote = false;
 
 function normalizeArticleSpacing() {
-  const sectionThreeFirstParagraph = article.querySelector('#cdas-baby-bonds > h2 + p');
+  const sectionThreeFirstParagraph = [...article.querySelectorAll('#cdas-baby-bonds p')].find((paragraph) =>
+    paragraph.textContent.trim().startsWith('CDAs in the US are public funds controlled by state governments')
+  );
   if (!sectionThreeFirstParagraph) return;
   sectionThreeFirstParagraph.classList.remove('list-paragraph');
-  sectionThreeFirstParagraph.style.removeProperty('line-height');
-  sectionThreeFirstParagraph.style.removeProperty('margin');
-  sectionThreeFirstParagraph.style.removeProperty('margin-top');
-  sectionThreeFirstParagraph.style.removeProperty('margin-bottom');
-  sectionThreeFirstParagraph.style.removeProperty('padding-left');
+  [sectionThreeFirstParagraph, ...sectionThreeFirstParagraph.querySelectorAll('*')].forEach((element) => {
+    ['font', 'font-family', 'font-size', 'line-height', 'margin', 'margin-top', 'margin-bottom', 'padding-left']
+      .forEach((property) => element.style.removeProperty(property));
+  });
 }
 
 normalizeArticleSpacing();
