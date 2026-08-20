@@ -120,8 +120,8 @@ UK Child Trust Fund (CTF)</h3><p>The Child Trust Fund (CTF) was introduced in th
     <select data-format="fontName" aria-label="Font family">
       <option value="Source Serif 4">Academic serif</option><option value="Georgia">Georgia</option><option value="Arial">Arial</option><option value="Helvetica">Helvetica</option><option value="Courier New">Monospace</option>
     </select>
-    <select data-format="fontSize" aria-label="Text size">
-      <option value="2">Small</option><option value="3" selected>Normal</option><option value="4">Large</option><option value="5">Extra large</option>
+    <select data-format="fontSizePx" aria-label="Font size">
+      <option value="12">12 px</option><option value="14">14 px</option><option value="16">16 px</option><option value="18" selected>18 px</option><option value="20">20 px</option><option value="22">22 px</option><option value="24">24 px</option><option value="28">28 px</option><option value="32">32 px</option>
     </select>
     <span class="toolbar-divider"></span>
     <button type="button" data-command="bold" title="Bold"><b>B</b></button>
@@ -144,17 +144,35 @@ UK Child Trust Fund (CTF)</h3><p>The Child Trust Fund (CTF) was introduced in th
     <button type="button" data-command="undo" title="Undo">Undo</button>
     <button type="button" data-command="redo" title="Redo">Redo</button>`;
   document.body.insertBefore(toolbar, document.querySelector('main'));
+  let formattingRange = null;
+  const rememberFormattingSelection = () => {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount && article.contains(selection.anchorNode)) formattingRange = selection.getRangeAt(0).cloneRange();
+  };
+  const restoreFormattingSelection = () => {
+    if (!formattingRange || !article.contains(formattingRange.commonAncestorContainer)) return;
+    const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(formattingRange);
+  };
+  document.addEventListener('selectionchange', rememberFormattingSelection);
   toolbar.addEventListener('mousedown', (event) => { if (event.target.closest('button')) event.preventDefault(); });
   toolbar.addEventListener('click', (event) => {
     const control = event.target.closest('[data-command]'); if (!control) return;
     const command = control.dataset.command;
     let value = null;
     if (command === 'createLink') { value = prompt('Paste a web address'); if (!value) return; }
+    restoreFormattingSelection();
     document.execCommand(command, false, value); article.focus(); article.dispatchEvent(new Event('input', {bubbles:true}));
   });
   toolbar.addEventListener('change', (event) => {
     const control = event.target.closest('[data-format]'); if (!control) return;
-    document.execCommand(control.dataset.format, false, control.value); article.focus(); article.dispatchEvent(new Event('input', {bubbles:true}));
+    restoreFormattingSelection();
+    if (control.dataset.format === 'fontSizePx') {
+      document.execCommand('fontSize', false, '7');
+      article.querySelectorAll('font[size="7"]').forEach((node) => { node.removeAttribute('size'); node.style.fontSize = `${control.value}px`; });
+    } else {
+      document.execCommand(control.dataset.format, false, control.value);
+    }
+    article.focus(); rememberFormattingSelection(); article.dispatchEvent(new Event('input', {bubbles:true}));
   });
   let editing = false;
   let timer;
