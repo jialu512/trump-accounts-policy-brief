@@ -18,6 +18,12 @@ button { font:inherit; }
 .header-actions { display:flex; align-items:center; gap:9px; }
 .save-status { margin-right:8px; color:var(--muted); font-size:12px; }
 .save-status span { color:var(--green); font-size:9px; }
+.editor-toolbar { position:sticky; top:64px; z-index:18; display:flex; flex-wrap:wrap; align-items:center; gap:5px; padding:9px max(18px, calc((100vw - 1180px) / 2)); background:#f6f8fa; border-bottom:1px solid var(--border); box-shadow:0 2px 8px rgba(31,35,40,.06); }
+.editor-toolbar[hidden] { display:none; }
+.editor-toolbar button,.editor-toolbar select { min-height:32px; border:1px solid #d0d7de; border-radius:6px; background:#fff; color:#24292f; font:12px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; padding:6px 9px; }
+.editor-toolbar button:hover,.editor-toolbar select:hover { background:#f3f4f6; border-color:#afb8c1; }
+.editor-toolbar button:focus-visible,.editor-toolbar select:focus-visible { outline:2px solid #0969da; outline-offset:1px; }
+.toolbar-divider { width:1px; height:24px; margin:0 3px; background:#d8dee4; }
 .secondary-button,.edit-button { border:1px solid #bbb6ad; border-radius:4px; padding:8px 13px; background:#fff; color:var(--ink); font:600 12px/1 Arial,Helvetica,sans-serif; cursor:pointer; }
 .edit-button { border-color:var(--cardinal); background:var(--cardinal); color:#fff; }
 .secondary-button:hover { background:#f7f6f3; }
@@ -102,6 +108,54 @@ UK Child Trust Fund (CTF)</h3><p>The Child Trust Fund (CTF) was introduced in th
   const input = document.querySelector('input[accept="application/json"]');
   const graphInput = document.querySelector('input[accept*="image/png"]');
   const status = document.querySelector('.save-status');
+  const toolbar = document.createElement('div');
+  toolbar.className = 'editor-toolbar';
+  toolbar.hidden = true;
+  toolbar.setAttribute('role', 'toolbar');
+  toolbar.setAttribute('aria-label', 'Text formatting');
+  toolbar.innerHTML = `
+    <select data-format="formatBlock" aria-label="Paragraph style">
+      <option value="p">Paragraph</option><option value="h2">Heading 2</option><option value="h3">Heading 3</option><option value="blockquote">Quote</option>
+    </select>
+    <select data-format="fontName" aria-label="Font family">
+      <option value="Source Serif 4">Academic serif</option><option value="Georgia">Georgia</option><option value="Arial">Arial</option><option value="Helvetica">Helvetica</option><option value="Courier New">Monospace</option>
+    </select>
+    <select data-format="fontSize" aria-label="Text size">
+      <option value="2">Small</option><option value="3" selected>Normal</option><option value="4">Large</option><option value="5">Extra large</option>
+    </select>
+    <span class="toolbar-divider"></span>
+    <button type="button" data-command="bold" title="Bold"><b>B</b></button>
+    <button type="button" data-command="italic" title="Italic"><i>I</i></button>
+    <button type="button" data-command="underline" title="Underline"><u>U</u></button>
+    <button type="button" data-command="strikeThrough" title="Strikethrough"><s>S</s></button>
+    <span class="toolbar-divider"></span>
+    <button type="button" data-command="insertUnorderedList" title="Bulleted list">• List</button>
+    <button type="button" data-command="insertOrderedList" title="Numbered list">1. List</button>
+    <button type="button" data-command="outdent" title="Decrease indent">← Indent</button>
+    <button type="button" data-command="indent" title="Increase indent">Indent →</button>
+    <span class="toolbar-divider"></span>
+    <button type="button" data-command="justifyLeft" title="Align left">Left</button>
+    <button type="button" data-command="justifyCenter" title="Align center">Center</button>
+    <button type="button" data-command="justifyRight" title="Align right">Right</button>
+    <button type="button" data-command="createLink" title="Insert link">Link</button>
+    <button type="button" data-command="unlink" title="Remove link">Unlink</button>
+    <button type="button" data-command="removeFormat" title="Clear formatting">Clear</button>
+    <span class="toolbar-divider"></span>
+    <button type="button" data-command="undo" title="Undo">Undo</button>
+    <button type="button" data-command="redo" title="Redo">Redo</button>`;
+  document.body.insertBefore(toolbar, document.querySelector('main'));
+  toolbar.addEventListener('mousedown', (event) => { if (event.target.closest('button')) event.preventDefault(); });
+  toolbar.addEventListener('click', (event) => {
+    const control = event.target.closest('[data-command]'); if (!control) return;
+    const command = control.dataset.command;
+    let value = null;
+    if (command === 'createLink') { value = prompt('Paste a web address'); if (!value) return; }
+    document.execCommand(command, false, value); article.focus(); article.dispatchEvent(new Event('input', {bubbles:true}));
+  });
+  toolbar.addEventListener('change', (event) => {
+    const control = event.target.closest('[data-format]'); if (!control) return;
+    document.execCommand(control.dataset.format, false, control.value); article.focus(); article.dispatchEvent(new Event('input', {bubbles:true}));
+  });
   let editing = false;
   let timer;
   const save = () => {
@@ -115,6 +169,7 @@ UK Child Trust Fund (CTF)</h3><p>The Child Trust Fund (CTF) was introduced in th
     article.classList.toggle('is-editing', editing);
     edit.textContent = editing ? 'Finish editing' : 'Edit page';
     graphButton.hidden = !editing;
+    toolbar.hidden = !editing;
     if (!editing) save();
   });
   article.addEventListener('input', () => {
